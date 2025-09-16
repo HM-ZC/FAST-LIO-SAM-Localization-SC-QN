@@ -71,7 +71,7 @@ FastLioLocalizationScQn::FastLioLocalizationScQn(const ros::NodeHandle &n_privat
     debug_fine_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/fine_aligned_nano_gicp_localization", 10);
     map_to_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/map_to_odom", 10);
     
-    sub_odom_ = std::make_shared<message_filters::Subscriber<nav_msgs::Odometry>>(nh_, "/odom_to_baselink", 10);
+    sub_odom_ = std::make_shared<message_filters::Subscriber<nav_msgs::Odometry>>(nh_, "/odometry", 10);
     sub_pcd_ = std::make_shared<message_filters::Subscriber<sensor_msgs::PointCloud2>>(nh_, "/corrected_current_pcd", 10);
     sub_odom_pcd_sync_ = std::make_shared<message_filters::Synchronizer<odom_pcd_sync_pol>>(odom_pcd_sync_pol(10), *sub_odom_, *sub_pcd_);
     sub_odom_pcd_sync_->registerCallback(boost::bind(&FastLioLocalizationScQn::odomPcdCallback, this, _1, _2));
@@ -88,10 +88,10 @@ void FastLioLocalizationScQn::odomPcdCallback(const nav_msgs::OdometryConstPtr &
     current_frame.pose_corrected_eig_ = last_corrected_TF_ * current_frame.pose_eig_;
     geometry_msgs::PoseStamped current_pose_stamped_ = poseEigToPoseStamped(current_frame.pose_corrected_eig_, map_frame_);
     realtime_pose_pub_.publish(current_pose_stamped_);
-    broadcaster_.sendTransform(tf::StampedTransform(poseEigToROSTf(current_frame.pose_corrected_eig_),
-                                                    ros::Time::now(),
-                                                    map_frame_,
-                                                    "base_link"));
+    // broadcaster_.sendTransform(tf::StampedTransform(poseEigToROSTf(current_frame.pose_corrected_eig_),
+    //                                                 ros::Time::now(),
+    //                                                 map_frame_,
+    //                                                 "base_link"));
     // pub current scan in corrected pose frame
     corrected_current_pcd_pub_.publish(pclToPclRos(transformPcd(current_frame.pcd_, current_frame.pose_corrected_eig_), map_frame_));
 
@@ -108,10 +108,10 @@ void FastLioLocalizationScQn::odomPcdCallback(const nav_msgs::OdometryConstPtr &
             std::lock_guard<std::mutex> lock(vis_mutex_);
             updateOdomsAndPaths(current_frame);
         }
-        
+
         // 3. 发布初始的map->odom变换
         publishMapToOdom(odom_msg->header.stamp);
-        
+
         is_initialized_ = true;
     }
     else
@@ -182,7 +182,7 @@ void FastLioLocalizationScQn::matchingTimerFunc(const ros::TimerEvent &event)
         // map matches
         matched_pairs_xyz_.push_back({corrected_odoms_.points[last_keyframe_copy.idx_], raw_odoms_.points[last_keyframe_copy.idx_]}); // for vis
         map_match_pub_.publish(getMatchMarker(matched_pairs_xyz_));
-        
+
         publishMapToOdom(ros::Time::now());
     }
     high_resolution_clock::time_point t2_ = high_resolution_clock::now();
@@ -221,7 +221,7 @@ void FastLioLocalizationScQn::publishMapToOdom(const ros::Time& stamp)
 {
     nav_msgs::Odometry map_to_odom;
     map_to_odom.header.stamp = stamp;
-    map_to_odom.header.frame_id = "map";
+    map_to_odom.header.frame_id = map_frame_;
     map_to_odom.child_frame_id = "odom";
     
     // 将变换矩阵转换为pose消息

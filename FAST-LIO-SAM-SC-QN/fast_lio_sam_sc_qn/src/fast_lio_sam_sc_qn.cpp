@@ -9,7 +9,7 @@ FastLioSamScQn::FastLioSamScQn(const ros::NodeHandle &n_private):
     auto &gc = lc_config.gicp_config_;
     auto &qc = lc_config.quatro_config_;
     /* basic */
-    nh_.param<std::string>("/basic/map_frame", map_frame_, "map");
+    nh_.param<std::string>("/basic/map_frame", map_frame_, "odom");
     nh_.param<double>("/basic/loop_update_hz", loop_update_hz, 1.0);
     nh_.param<double>("/basic/vis_hz", vis_hz, 0.5);
     nh_.param<double>("/save_voxel_resolution", voxel_res_, 0.3);
@@ -72,7 +72,7 @@ FastLioSamScQn::FastLioSamScQn(const ros::NodeHandle &n_private):
     debug_dst_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/dst", 10, true);
     debug_coarse_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/coarse_aligned_quatro", 10, true);
     debug_fine_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/fine_aligned_nano_gicp", 10, true);
-    odom_to_baselink_pub_ = nh_.advertise<nav_msgs::Odometry>("/odom_to_baselink", 10);
+    odom_to_baselink_pub_ = nh_.advertise<nav_msgs::Odometry>("/odometry", 10);
     /* subscribers */
     sub_odom_ = std::make_shared<message_filters::Subscriber<nav_msgs::Odometry>>(nh_, "/Odometry", 10);
     sub_pcd_ = std::make_shared<message_filters::Subscriber<sensor_msgs::PointCloud2>>(nh_, "/cloud_registered", 10);
@@ -99,27 +99,27 @@ void FastLioSamScQn::odomPcdCallback(const nav_msgs::OdometryConstPtr &odom_msg,
         odom_delta_ = odom_delta_ * last_odom_tf.inverse() * current_frame_.pose_eig_;
         current_frame_.pose_corrected_eig_ = last_corrected_pose_ * odom_delta_;
         realtime_pose_pub_.publish(poseEigToPoseStamped(current_frame_.pose_corrected_eig_, map_frame_));
-        broadcaster_.sendTransform(tf::StampedTransform(poseEigToROSTf(current_frame_.pose_corrected_eig_),
-                                                        ros::Time::now(),
-                                                        "odom",
-                                                        "base_link"));
+        // broadcaster_.sendTransform(tf::StampedTransform(poseEigToROSTf(current_frame_.pose_corrected_eig_),
+        //                                                 ros::Time::now(),
+        //                                                 "odom",
+        //                                                 "base_link"));
     }
 
     // 发布矫正后的位姿到 /odom_to_baselink
     nav_msgs::Odometry odom_to_baselink;
     odom_to_baselink.header = odom_msg->header;
-    odom_to_baselink.header.frame_id = "odom";
+    odom_to_baselink.header.frame_id = map_frame_;
     odom_to_baselink.child_frame_id = "base_link";
-    
+
     // 将矫正后的位姿转换为geometry_msgs::Pose格式
     geometry_msgs::PoseStamped corrected_pose_stamped = poseEigToPoseStamped(current_frame_.pose_corrected_eig_, map_frame_);
     odom_to_baselink.pose.pose = corrected_pose_stamped.pose;
-    
+
     // 设置协方差
     odom_to_baselink.pose.covariance = odom_msg->pose.covariance;
-    
+
     odom_to_baselink.twist = odom_msg->twist;
-    
+
     odom_to_baselink_pub_.publish(odom_to_baselink);
 
     corrected_current_pcd_pub_.publish(pclToPclRos(transformPcd(current_frame_.pcd_, current_frame_.pose_corrected_eig_), map_frame_));
