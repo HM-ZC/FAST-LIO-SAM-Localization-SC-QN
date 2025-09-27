@@ -70,8 +70,9 @@ FastLioLocalizationScQn::FastLioLocalizationScQn(const ros::NodeHandle &n_privat
     debug_coarse_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/coarse_aligned_quatro_localization", 10);
     debug_fine_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/fine_aligned_nano_gicp_localization", 10);
     map_to_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/map_to_odom", 10);
-    
-    sub_odom_ = std::make_shared<message_filters::Subscriber<nav_msgs::Odometry>>(nh_, "/odometry", 10);
+    localization_odom_pub_ = nh_.advertise<nav_msgs::Odometry>("/localization", 10);
+    // subscribers
+    sub_odom_ = std::make_shared<message_filters::Subscriber<nav_msgs::Odometry>>(nh_, "/slam", 10);
     sub_pcd_ = std::make_shared<message_filters::Subscriber<sensor_msgs::PointCloud2>>(nh_, "/corrected_current_pcd", 10);
     sub_odom_pcd_sync_ = std::make_shared<message_filters::Synchronizer<odom_pcd_sync_pol>>(odom_pcd_sync_pol(10), *sub_odom_, *sub_pcd_);
     sub_odom_pcd_sync_->registerCallback(boost::bind(&FastLioLocalizationScQn::odomPcdCallback, this, _1, _2));
@@ -88,6 +89,33 @@ void FastLioLocalizationScQn::odomPcdCallback(const nav_msgs::OdometryConstPtr &
     current_frame.pose_corrected_eig_ = last_corrected_TF_ * current_frame.pose_eig_;
     geometry_msgs::PoseStamped current_pose_stamped_ = poseEigToPoseStamped(current_frame.pose_corrected_eig_, map_frame_);
     realtime_pose_pub_.publish(current_pose_stamped_);
+
+    nav_msgs::Odometry corrected_odom;
+    corrected_odom.header.stamp = odom_msg->header.stamp;
+    corrected_odom.header.frame_id = map_frame_;
+    corrected_odom.child_frame_id = odom_msg->child_frame_id;
+
+    corrected_odom.pose.pose = current_pose_stamped_.pose;
+    corrected_odom.twist = odom_msg->twist;
+
+    for (int i = 0; i < 36; i++)
+    {
+        corrected_odom.pose.covariance[i] = 0.0;
+    }
+    corrected_odom.pose.covariance[0] = 0.01;   // x
+    corrected_odom.pose.covariance[7] = 0.01;   // y
+    corrected_odom.pose.covariance[14] = 0.01;  // z
+    corrected_odom.pose.covariance[21] = 0.01;  // roll
+    corrected_odom.pose.covariance[28] = 0.01;  // pitch
+    corrected_odom.pose.covariance[35] = 0.01;  // yaw
+
+    for (int i = 0; i < 36; i++)
+    {
+        corrected_odom.twist.covariance[i] = odom_msg->twist.covariance[i];
+    }
+
+    localization_odom_pub_.publish(corrected_odom);
+
     // broadcaster_.sendTransform(tf::StampedTransform(poseEigToROSTf(current_frame.pose_corrected_eig_),
     //                                                 ros::Time::now(),
     //                                                 map_frame_,
@@ -223,12 +251,12 @@ void FastLioLocalizationScQn::publishMapToOdom(const ros::Time& stamp)
     map_to_odom.header.stamp = stamp;
     map_to_odom.header.frame_id = map_frame_;
     map_to_odom.child_frame_id = "odom";
-    
+
     // 将变换矩阵转换为pose消息
     tf::Transform tf_transform;
     Eigen::Affine3d affine(last_corrected_TF_.cast<double>());
     tf::transformEigenToTF(affine, tf_transform);
-    
+
     map_to_odom.pose.pose.position.x = tf_transform.getOrigin().x();
     map_to_odom.pose.pose.position.y = tf_transform.getOrigin().y();
     map_to_odom.pose.pose.position.z = tf_transform.getOrigin().z();
@@ -236,7 +264,7 @@ void FastLioLocalizationScQn::publishMapToOdom(const ros::Time& stamp)
     map_to_odom.pose.pose.orientation.y = tf_transform.getRotation().y();
     map_to_odom.pose.pose.orientation.z = tf_transform.getRotation().z();
     map_to_odom.pose.pose.orientation.w = tf_transform.getRotation().w();
-    
+
     // 设置协方差矩阵
     for (int i = 0; i < 36; i++)
     {
@@ -249,12 +277,12 @@ void FastLioLocalizationScQn::publishMapToOdom(const ros::Time& stamp)
     map_to_odom.pose.covariance[21] = 0.01;  // roll
     map_to_odom.pose.covariance[28] = 0.01;  // pitch
     map_to_odom.pose.covariance[35] = 0.01;  // yaw
-    
+
     map_to_odom_pub_.publish(map_to_odom);
-    
-    ROS_INFO("Published map->odom transform: [%.3f, %.3f, %.3f]", 
-             map_to_odom.pose.pose.position.x, 
-             map_to_odom.pose.pose.position.y, 
+
+    ROS_INFO("Published map->odom transform: [%.3f, %.3f, %.3f]",
+             map_to_odom.pose.pose.position.x,
+             map_to_odom.pose.pose.position.y,
              map_to_odom.pose.pose.position.z);
 }
 

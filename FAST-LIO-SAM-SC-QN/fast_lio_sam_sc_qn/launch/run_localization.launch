@@ -2,7 +2,7 @@
 
 	<arg name="rviz" default="true" />
 	<arg name="lidar" default="livox" /> <!-- ouster, velodyne, livox, kitti, ... -->
-	<arg name="odom_topic" default="/odometry" />
+	<arg name="odom_topic" default="/Odometry" />
 	<arg name="lidar_topic" default="/cloud_registered" />
 
 	<!-- visualize -->
@@ -12,7 +12,7 @@
 	<!-- run fast_lio_sam_sc_qn -->
 	<rosparam command="load" file="$(find fast_lio_sam_sc_qn)/config/config.yaml" />
 	<node pkg="fast_lio_sam_sc_qn" type="fast_lio_sam_sc_qn_node" name="fast_lio_sam_sc_qn_node" output="screen">
-		<remap from="/slam" to="$(arg odom_topic)"/>
+		<remap from="/Odometry" to="$(arg odom_topic)"/>
 		<remap from="/cloud_registered" to="$(arg lidar_topic)"/>
 	</node>
 

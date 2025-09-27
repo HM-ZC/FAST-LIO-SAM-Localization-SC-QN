@@ -72,7 +72,7 @@ FastLioSamScQn::FastLioSamScQn(const ros::NodeHandle &n_private):
     debug_dst_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/dst", 10, true);
     debug_coarse_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/coarse_aligned_quatro", 10, true);
     debug_fine_aligned_pub_ = nh_.advertise<sensor_msgs::PointCloud2>("/fine_aligned_nano_gicp", 10, true);
-    odom_to_baselink_pub_ = nh_.advertise<nav_msgs::Odometry>("/odometry", 10);
+    odom_to_baselink_pub_ = nh_.advertise<nav_msgs::Odometry>("/slam", 10);
     /* subscribers */
     sub_odom_ = std::make_shared<message_filters::Subscriber<nav_msgs::Odometry>>(nh_, "/Odometry", 10);
     sub_pcd_ = std::make_shared<message_filters::Subscriber<sensor_msgs::PointCloud2>>(nh_, "/cloud_registered", 10);

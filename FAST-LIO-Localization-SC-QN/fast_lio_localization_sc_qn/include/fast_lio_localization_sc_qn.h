@@ -78,7 +78,8 @@ private:
     ros::Publisher corrected_current_pcd_pub_, realtime_pose_pub_, map_match_pub_;
     ros::Publisher saved_map_pub_;
     ros::Publisher debug_src_pub_, debug_dst_pub_, debug_coarse_aligned_pub_, debug_fine_aligned_pub_;
-    ros::Publisher map_to_odom_pub_;  // 添加这个发布器声明
+    ros::Publisher map_to_odom_pub_;
+    ros::Publisher localization_odom_pub_;
     ros::Timer match_timer_;
     // odom, pcd sync subscriber
     std::shared_ptr<message_filters::Synchronizer<odom_pcd_sync_pol>> sub_odom_pcd_sync_ = nullptr;
