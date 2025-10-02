@@ -1,7 +1,7 @@
 ## FAST-LIO-SAM-Localization-SC-QN
 
 本仓库包含两部分：
-- **FAST-LIO-SAM-SC-QN**：基于 FAST-LIO2 的里程计 + iSAM2 位姿图优化 + ScanContext 回环检测，结合 Quatro 与 Nano-GICP 做回环配准的 SLAM。
+- **FAST-LIO-SAM-SC-QN**：基于 FAST-LIO2 的里程计 + GTSAM 位姿图优化 + ScanContext 回环检测，结合 Quatro 与 Nano-GICP 做回环配准的 SLAM。
 - **FAST-LIO-Localization-SC-QN**：基于保存好的地图（.bag）进行定位的系统，使用 ScanContext 进行候选匹配，Quatro 提供全局粗配准初值，Nano-GICP 进行精配准。
 
 两者可单独使用，也可联动：SLAM 节点在线发布 `odom -> base_link` 与矫正点云，定位节点据此估计并发布 `map -> odom`。
