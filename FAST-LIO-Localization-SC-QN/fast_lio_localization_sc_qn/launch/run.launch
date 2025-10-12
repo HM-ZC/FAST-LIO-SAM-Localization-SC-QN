@@ -3,7 +3,7 @@
 	<arg name="rviz" default="true" />
 	<arg name="lidar" default="livox" /> <!-- ouster, velodyne, livox -->
 	<arg name="odom_topic" default="/odometry" />
-	<arg name="lidar_topic" default="/cloud_registered" />
+	<arg name="lidar_topic" default="/current_pcd" />
 
 	<!-- visualize -->
 	<node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz_sam_localization" args="-d $(find fast_lio_localization_sc_qn)/config/localization_rviz.rviz" launch-prefix="nice"/>
@@ -12,7 +12,7 @@
 	<rosparam command="load" file="$(find fast_lio_localization_sc_qn)/config/config.yaml" />
 	<node pkg="fast_lio_localization_sc_qn" type="fast_lio_localization_sc_qn_node" name="fast_lio_localization_sc_qn_node" output="screen">
 		<remap from="/localization" to="$(arg odom_topic)"/>
-		<remap from="/cloud_registered" to="$(arg lidar_topic)"/>
+		<remap from="/corrected_current_pcd_localization" to="$(arg lidar_topic)"/>
 	</node>
 
 	<!-- run fast_lio -->
