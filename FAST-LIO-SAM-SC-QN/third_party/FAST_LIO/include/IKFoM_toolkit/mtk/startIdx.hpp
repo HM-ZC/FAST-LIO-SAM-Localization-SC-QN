@@ -93,7 +93,8 @@ namespace MTK {
  * @c &pose::orient and @c &pose::trans give all required information and are still
  * valid if the base type gets extended or the actual types of @a orient and @a trans
  * change (e.g. from 2D to 3D).
- *
+ * 
+ * @todo Maybe require manifolds to typedef MatrixType and VectorType, etc.
  */
 //@{
 
@@ -266,7 +267,8 @@ subvector(vectview<Scalar, BaseDOF> vec, SubManifold<T, idx, dim> Base::* ptr)
 }
 
 /**
-  */
+ * @todo This should be covered already by subvector(vectview<typename Base::scalar,Base::DOF> vec,SubManifold<T,idx> Base::*)
+ */
 template<class Scalar, int BaseDOF, class Base, class T, int idx, int dim>
 vectview<Scalar, T::DOF>
 subvector(Eigen::Matrix<Scalar, BaseDOF, 1>& vec, SubManifold<T, idx, dim> Base::* ptr)

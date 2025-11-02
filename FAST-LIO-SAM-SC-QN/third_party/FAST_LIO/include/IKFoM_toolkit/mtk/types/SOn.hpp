@@ -279,7 +279,8 @@ struct SO3 : public Eigen::Quaternion<_scalar, Options> {
 	 * Calculate the exponential map. In matrix terms this would correspond 
 	 * to the Rodrigues formula.
 	 */
-	//	static SO3 exp(MTK::vectview<const scalar, 3> dvec, scalar scale = 1){
+	// FIXME vectview<> can't be constructed from every MatrixBase<>, use const Vector3x& as workaround
+//	static SO3 exp(MTK::vectview<const scalar, 3> dvec, scalar scale = 1){
 	static SO3 exp(const Eigen::Matrix<scalar, 3, 1>& dvec, scalar scale = 1){
 		SO3 res;
 		res.w() = MTK::exp<scalar, 3>(res.vec(), dvec, scalar(scale/2));

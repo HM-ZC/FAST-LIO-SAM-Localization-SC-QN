@@ -277,7 +277,7 @@ struct matrix : public Eigen::Matrix<_scalar, M, N, _Options> {
 		}
 		return is;
 	}
-};
+};// @todo What if M / N = Eigen::Dynamic?
 
 
 

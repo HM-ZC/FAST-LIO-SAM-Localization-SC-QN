@@ -96,7 +96,8 @@ public:
 		base_type::operator=(value);
 		return *this;
 	}
-
+	
+	// FIXME: Maybe overloading operator& is not a good idea ...
 	CvMat* operator&()
 	{
 		return &cv_mat_;

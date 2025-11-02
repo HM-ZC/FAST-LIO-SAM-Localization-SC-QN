@@ -1,39 +1,41 @@
-#include <cmath>
-#include <math.h>
-#include <deque>
-#include <mutex>
-#include <thread>
-#include <fstream>
-#include <csignal>
-#include <ros/ros.h>
-#include <so3_math.h>
+#include "std_msgs/Empty.h"
+#include "use-ikfom.hpp"
 #include <Eigen/Eigen>
+#include <cmath>
 #include <common_lib.h>
-#include <pcl/common/io.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
 #include <condition_variable>
+#include <csignal>
+#include <deque>
+#include <eigen_conversions/eigen_msg.h>
+#include <fstream>
+#include <geometry_msgs/Vector3.h>
+#include <math.h>
+#include <mutex>
 #include <nav_msgs/Odometry.h>
+#include <pcl/common/io.h>
 #include <pcl/common/transforms.h>
 #include <pcl/kdtree/kdtree_flann.h>
-#include <tf/transform_broadcaster.h>
-#include <eigen_conversions/eigen_msg.h>
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
+#include <ros/ros.h>
 #include <sensor_msgs/Imu.h>
 #include <sensor_msgs/PointCloud2.h>
-#include <geometry_msgs/Vector3.h>
-#include "use-ikfom.hpp"
+#include <so3_math.h>
+#include <tf/transform_broadcaster.h>
+#include <thread>
 
 /// *************Preconfiguration
 
 #define MAX_INI_COUNT (10)
 
-const bool time_list(PointType &x, PointType &y) {return (x.curvature < y.curvature);};
+const bool time_list(PointType &x, PointType &y) {
+  return (x.curvature < y.curvature);
+};
 
 /// *************IMU Process and undistortion
-class ImuProcess
-{
- public:
+class ImuProcess {
+public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
   ImuProcess();
@@ -241,23 +243,43 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
   input_ikfom in;
   for (auto it_imu = v_imu.begin(); it_imu < (v_imu.end() - 1); it_imu++)
   {
-    auto &&head = *(it_imu);
-    auto &&tail = *(it_imu + 1);
-    
-    if (tail->header.stamp.toSec() < last_lidar_end_time_)    continue;
-    
-    angvel_avr<<0.5 * (head->angular_velocity.x + tail->angular_velocity.x),
-                0.5 * (head->angular_velocity.y + tail->angular_velocity.y),
-                0.5 * (head->angular_velocity.z + tail->angular_velocity.z);
-    acc_avr   <<0.5 * (head->linear_acceleration.x + tail->linear_acceleration.x),
-                0.5 * (head->linear_acceleration.y + tail->linear_acceleration.y),
-                0.5 * (head->linear_acceleration.z + tail->linear_acceleration.z);
+    auto&& head = *(it_imu);
+    auto&& tail = *(it_imu + 1);
 
-    // fout_imu << setw(10) << head->header.stamp.toSec() - first_lidar_time << " " << angvel_avr.transpose() << " " << acc_avr.transpose() << endl;
+    if (tail->header.stamp.toSec() < last_lidar_end_time_)
+      continue;
 
-    acc_avr     = acc_avr * G_m_s2 / mean_acc.norm(); // - state_inout.ba;
+    angvel_avr << 0.5 * (head->angular_velocity.x + tail->angular_velocity.x),
+        0.5 * (head->angular_velocity.y + tail->angular_velocity.y),
+        0.5 * (head->angular_velocity.z + tail->angular_velocity.z);
+    if (head->angular_velocity.x > 25 || head->angular_velocity.y > 25 || head->angular_velocity.z > 25)
+    {
+      angvel_avr << tail->angular_velocity.x, tail->angular_velocity.y, tail->angular_velocity.z;
+      ROS_ERROR("bad imu");
+    }
+    if (tail->angular_velocity.x > 25 || tail->angular_velocity.y > 25 || tail->angular_velocity.z > 25)
+    {
+      angvel_avr << head->angular_velocity.x, head->angular_velocity.y, head->angular_velocity.z;
+      ROS_ERROR("bad imu");
+    }
 
-    if(head->header.stamp.toSec() < last_lidar_end_time_)
+    if (head->angular_velocity.x > 25 || head->angular_velocity.y > 25 || head->angular_velocity.z > 25 ||
+        tail->angular_velocity.x > 25 || tail->angular_velocity.y > 25 || tail->angular_velocity.z > 25)
+    {
+      ROS_ERROR("bad imu!!!!");
+      continue;
+    }
+
+    acc_avr << 0.5 * (head->linear_acceleration.x + tail->linear_acceleration.x),
+        0.5 * (head->linear_acceleration.y + tail->linear_acceleration.y),
+        0.5 * (head->linear_acceleration.z + tail->linear_acceleration.z);
+
+    // fout_imu << setw(10) << head->header.stamp.toSec() - first_lidar_time << " " << angvel_avr.transpose() << " " <<
+    // acc_avr.transpose() << endl;
+
+    acc_avr = acc_avr * G_m_s2 / mean_acc.norm();  // - state_inout.ba;
+
+    if (head->header.stamp.toSec() < last_lidar_end_time_)
     {
       dt = tail->header.stamp.toSec() - last_lidar_end_time_;
       // dt = tail->header.stamp.toSec() - pcl_beg_time;
@@ -266,7 +288,7 @@ void ImuProcess::UndistortPcl(const MeasureGroup &meas, esekfom::esekf<state_ikf
     {
       dt = tail->header.stamp.toSec() - head->header.stamp.toSec();
     }
-    
+
     in.acc = acc_avr;
     in.gyro = angvel_avr;
     Q.block<3, 3>(0, 0).diagonal() = cov_gyr;
@@ -352,17 +374,20 @@ void ImuProcess::Process(const MeasureGroup &meas,  esekfom::esekf<state_ikfom, 
     last_imu_   = meas.imu.back();
 
     state_ikfom imu_state = kf_state.get_x();
-    if (init_iter_num > MAX_INI_COUNT)
-    {
+    if (init_iter_num > MAX_INI_COUNT) {
       cov_acc *= pow(G_m_s2 / mean_acc.norm(), 2);
       imu_need_init_ = false;
 
       cov_acc = cov_acc_scale;
       cov_gyr = cov_gyr_scale;
       ROS_INFO("IMU Initial Done");
+      ros::NodeHandle n;
+      ros::Publisher fast_lio_init =
+          n.advertise<std_msgs::Empty>("/fast_lio_init", 10);
+      fast_lio_init.publish(std_msgs::Empty());
       // ROS_INFO("IMU Initial Done: Gravity: %.4f %.4f %.4f %.4f; state.bias_g: %.4f %.4f %.4f; acc covarience: %.8f %.8f %.8f; gry covarience: %.8f %.8f %.8f",\
       //          imu_state.grav[0], imu_state.grav[1], imu_state.grav[2], mean_acc.norm(), cov_bias_gyr[0], cov_bias_gyr[1], cov_bias_gyr[2], cov_acc[0], cov_acc[1], cov_acc[2], cov_gyr[0], cov_gyr[1], cov_gyr[2]);
-      fout_imu.open(DEBUG_FILE_DIR("imu.txt"),ios::out);
+      fout_imu.open(DEBUG_FILE_DIR("imu.txt"), ios::out);
     }
 
     return;

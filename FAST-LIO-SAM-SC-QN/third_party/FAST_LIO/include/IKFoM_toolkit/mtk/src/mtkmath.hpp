@@ -149,13 +149,16 @@ std::pair<scalar, scalar> cos_sinc_sqrt(const scalar &x2){
 	static scalar const taylor_n_bound = sqrt(taylor_2_bound);
 	
 	assert(x2>=0 && "argument must be non-negative");
-
+	
+	// FIXME check if bigger bounds are possible
 	if(x2>=taylor_n_bound) {
 		// slow fall-back solution
 		scalar x = sqrt(x2);
 		return std::make_pair(cos(x), sin(x)/x); // x is greater than 0.
 	}
-
+	
+	// FIXME Replace by Horner-Scheme (4 instead of 5 FLOP/term, numerically more stable, theoretically cos and sinc can be calculated in parallel using SSE2 mulpd/addpd)
+	// TODO Find optimal coefficients using Remez algorithm
 	static scalar const inv[] = {1/3., 1/4., 1/5., 1/6., 1/7., 1/8., 1/9.};
 	scalar cosi = 1., sinc=1;
 	scalar term = -1/2. * x2;
@@ -267,6 +270,7 @@ void log(vectview<scalar, n> result,
 		const scalar &w, const vectview<const scalar, n> vec,
 		const scalar &scale, bool plus_minus_periodicity)
 {
+	// FIXME implement optimized case for vec.squaredNorm() <= tolerance() * (w*w) via Rational Remez approximation ~> only one division
 	scalar nv = vec.norm();
 	if(nv < tolerance<scalar>()) {
 		if(!plus_minus_periodicity && w < 0) {

@@ -91,7 +91,8 @@ namespace MTK {
 /**
  * Manifold representation of @f$ S^2 @f$. 
  * Used for unit vectors on the sphere or directions in 3D.
- *
+ * 
+ * @todo add conversions from/to polar angles?
  */
 template<class _scalar = double, int den = 1, int num = 1, int S2_typ = 3>
 struct S2 {

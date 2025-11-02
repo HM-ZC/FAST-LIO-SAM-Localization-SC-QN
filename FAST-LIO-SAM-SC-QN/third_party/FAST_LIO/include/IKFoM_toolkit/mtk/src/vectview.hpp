@@ -53,7 +53,8 @@ namespace MTK {
  * @tparam scalar Scalar type of the vector.
  * @tparam dim    Dimension of the vector.
  * 
- * /
+ * @todo @c vectview can be replaced by simple inheritance of @c Eigen::Map, as soon as they get const-correct
+ */
 namespace internal {
 	template<class Base, class T1, class T2>
 	struct CovBlock {
@@ -152,6 +153,7 @@ public:
 	vectview(const base &x) : base(x) {}
 	/**
 	 * Construct from Block
+	 * @todo adapt this, when Block gets const-correct
 	 */
 	template<class Base>
 	vectview(Eigen::VectorBlock<Base, dim> block) : base(&block.coeffRef(0)) {}
